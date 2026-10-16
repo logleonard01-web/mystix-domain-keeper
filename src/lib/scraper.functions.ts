@@ -80,7 +80,7 @@ export type FilterResult = { site: string; filter: string; status: string; categ
 
 export const checkFilters = createServerFn({ method: "POST" })
   .inputValidator((d: { links: string[]; filters: string[] }) => {
-    const links = (d?.links ?? []).map((l) => String(l).toLowerCase().trim()).filter((l) => DOMAIN_RE.test(l)).slice(0, 50);
+    const links = (d?.links ?? []).map((l) => String(l).toLowerCase().trim()).filter((l) => DOMAIN_RE.test(l)).slice(0, 12);
     const filters = (d?.filters ?? []).map(String).filter((f) => /^[a-z0-9]+$/.test(f)).slice(0, 3);
     if (!links.length || !filters.length) throw new Error("Pick at least one domain and one filter");
     return { links, filters };
@@ -90,6 +90,7 @@ export const checkFilters = createServerFn({ method: "POST" })
       method: "POST",
       headers: { Authorization: `Bearer ${process.env["LLLOGAN_API_KEY"]}`, "Content-Type": "application/json" },
       body: JSON.stringify(data),
+      signal: AbortSignal.timeout(45_000),
     });
     if (!r.ok) throw new Error(`Checker error (${r.status})`);
     const j: any = await r.json();
