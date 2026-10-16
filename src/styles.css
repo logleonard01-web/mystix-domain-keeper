@@ -154,3 +154,27 @@
 }
 @utility text-gradient { background: var(--gradient-title); -webkit-background-clip: text; background-clip: text; color: transparent; }
 @utility shadow-glow { box-shadow: var(--glow); }
+
+/* Checker marks (ported animations) */
+@keyframes rowIn { from { opacity: 0; transform: translateY(9px) } to { opacity: 1; transform: none } }
+@keyframes pp { 0% { transform: scale(.55); opacity: .9 } 100% { transform: scale(1.3); opacity: 0 } }
+@keyframes mkPop { from { transform: scale(.4) } to { transform: scale(1) } }
+@keyframes ringOk { to { stroke-dashoffset: 0; fill: oklch(0.8 0.17 160 / 13%) } }
+@keyframes ringBad { to { stroke-dashoffset: 0; fill: oklch(0.68 0.2 20 / 12%) } }
+@keyframes ringErr { to { stroke-dashoffset: 0; fill: oklch(0.8 0.14 70 / 10%) } }
+@keyframes tick { to { stroke-dashoffset: 0 } }
+@keyframes dotIn { to { opacity: 1 } }
+.chk-row { animation: rowIn .38s cubic-bezier(.2,.8,.3,1) both; border-left-width: 3px; }
+.chk-row.ok { border-left-color: var(--success); }
+.chk-row.bad { border-left-color: var(--destructive); }
+.pulse { width: 22px; height: 22px; border-radius: 50%; border: 2.2px solid var(--border); position: relative; display: inline-block; }
+.pulse::after { content: ''; position: absolute; inset: -2.2px; border-radius: 50%; border: 2.2px solid var(--muted-foreground); animation: pp 1.15s ease-out infinite; }
+.mk { width: 22px; height: 22px; display: block; animation: mkPop .3s cubic-bezier(.2,1.4,.4,1) both; }
+.mk circle { fill: transparent; stroke-width: 2.3; stroke-linecap: round; stroke-dasharray: 63; stroke-dashoffset: 63; }
+.mk.ok circle { stroke: var(--success); animation: ringOk .55s cubic-bezier(.55,.08,.35,1) forwards; }
+.mk.bad circle { stroke: var(--destructive); animation: ringBad .55s cubic-bezier(.55,.08,.35,1) forwards; }
+.mk.err circle { stroke: oklch(0.8 0.14 70); animation: ringErr .55s cubic-bezier(.55,.08,.35,1) forwards; }
+.mk path { fill: none; stroke: var(--foreground); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 15; stroke-dashoffset: 15; animation: tick .3s cubic-bezier(.3,.7,.4,1) forwards .42s; }
+.mk.bad .p2 { animation-delay: .58s; animation-duration: .22s; }
+.mk.err .p1 { stroke-dasharray: 7; stroke-dashoffset: 7; }
+.mk .dot { fill: var(--foreground); opacity: 0; animation: dotIn .18s ease forwards .8s; }
