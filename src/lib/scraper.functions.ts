@@ -158,9 +158,15 @@ const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/
 function jarOf(str: string) { const m = new Map<string, string>(); for (const p of str.split(";")) { const i = p.indexOf("="); if (i > 0) m.set(p.slice(0, i).trim(), p.slice(i + 1).trim()); } return m; }
 function eat(jar: Map<string, string>, r: Response) { for (const c of r.headers.getSetCookie?.() ?? []) { const kv = c.split(";")[0] ?? ""; const i = kv.indexOf("="); if (i > 0) jar.set(kv.slice(0, i).trim(), kv.slice(i + 1).trim()); } }
 const ser = (jar: Map<string, string>) => [...jar].map(([k, v]) => `${k}=${v}`).join("; ");
-async function finish(jar: Map<string, string>, r: Response) {
-  eat(jar, r);
-  const loc = r.headers.get("location") ?? "";
+async function finish(jar: Map<string, string>, r0: Response) {
+  let r = r0; eat(jar, r);
+  let loc = r.headers.get("location") ?? "";
+  // follow redirects by hand so cookies set on every hop are kept
+  for (let i = 0; i < 6 && loc && !/emailauth/.test(loc); i++) {
+    r = await fetch(new URL(loc, "https://www.expireddomains.net").href, { redirect: "manual", headers: { "user-agent": UA, cookie: ser(jar) } });
+    eat(jar, r);
+    loc = r.headers.get("location") ?? "";
+  }
   if (/emailauth/.test(loc)) {
     const authUrl = new URL(loc, "https://www.expireddomains.net").href;
     // the site emails the code when this page is opened
@@ -170,7 +176,10 @@ async function finish(jar: Map<string, string>, r: Response) {
   const check = await fetch("https://www.expireddomains.net/", { headers: { "user-agent": UA, cookie: ser(jar) } });
   eat(jar, check);
   const ok = /logout/i.test(await check.text());
-  return { ok, needsCode: false, authUrl: "", cookie: ok ? ser(jar) : "" };
+  const body = r === r0 && r.status === 200 ? await r.text() : "";
+  const reason = ok ? "" : /not correct/i.test(body) ? "That code isn't correct" : /wrong|invalid|incorrect/i.test(body) ? "Wrong username or password" : `Sign-in not accepted (status ${r0.status})`;
+  console.log("[expireddomains login]", { status: r0.status, ok, reason, cookies: [...jar.keys()] });
+  return { ok, needsCode: false, authUrl: "", cookie: ok ? ser(jar) : "", reason };
 }
 
 export const loginExpired = createServerFn({ method: "POST" })
@@ -200,5 +209,5 @@ export const verifyExpiredCode = createServerFn({ method: "POST" })
       body: new URLSearchParams({ secret_code: data.code, rememberme: "1" }),
     });
     const res = await finish(jar, r);
-    return { ok: res.ok, cookie: res.cookie };
+    return { ok: res.ok, cookie: res.cookie, reason: res.reason };
   });

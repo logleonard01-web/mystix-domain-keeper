@@ -51,7 +51,7 @@ function Index() {
     try {
       const r = await verifyExpiredCode({ data: { authUrl: acct.authUrl, cookie: acct.pend, code: acct.code } });
       if (r.ok) { saveCookie(r.cookie); setAcct((a) => ({ ...a, password: "", open: false, code: "", authUrl: "", pend: "", msg: "Signed in ✅" })); }
-      else setAcct((a) => ({ ...a, msg: "Code didn't work — try again" }));
+      else setAcct((a) => ({ ...a, msg: `${r.reason || "Code didn't work"} — press Sign in for a new code` }));
     } catch { setAcct((a) => ({ ...a, msg: "Code didn't work — try again" })); }
   }
   async function doLogin() {
@@ -60,7 +60,7 @@ function Index() {
       const r = await loginExpired({ data: { login: acct.login, password: acct.password } });
       if (r.ok) { saveCookie(r.cookie); setAcct((a) => ({ ...a, login: "", password: "", open: false, msg: "Signed in ✅" })); }
       else if (r.needsCode) setAcct((a) => ({ ...a, authUrl: r.authUrl, pend: r.cookie, msg: "Enter the code expireddomains.net just emailed you" }));
-      else setAcct((a) => ({ ...a, msg: "Sign-in failed — paste your cookie instead" }));
+      else setAcct((a) => ({ ...a, msg: r.reason || "Sign-in failed" }));
     } catch { setAcct((a) => ({ ...a, msg: "Sign-in failed — paste your cookie instead" })); }
   }
 
