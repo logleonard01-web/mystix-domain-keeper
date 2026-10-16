@@ -40,6 +40,7 @@ function Index() {
   const [status, setStatus] = useState("Idle");
   const [stats, setStats] = useState({ pages: 0, scraped: 0, checked: 0, clean: 0 });
   const [onlyClean, setOnlyClean] = useState(false);
+  const [need, setNeed] = useState(0); // 0 = all picked filters
   const runRef = useRef(false);
   const [cookie, setCookie] = useState("");
   const [acct, setAcct] = useState({ login: "", password: "", open: false, msg: "", code: "", authUrl: "", pend: "" });
@@ -114,13 +115,12 @@ function Index() {
       while (inflight.size >= 3 && runRef.current) await Promise.race(inflight);
       const job2 = (async () => {
       const pending = Object.fromEntries(fs.map((f) => [f, "pending" as Status]));
-      setRows((r) => [...domains.map((d) => ({ domain: d, checks: { ...pending } })), ...r].slice(0, 500));
+      setRows((r) => [...domains.map((d) => ({ domain: d, checks: { ...pending } })), ...r].slice(0, 5000));
 
       let results: { site: string; filter: string; status: string; category: string | null }[] = [];
       try { results = (await checkFilters({ data: { links: domains, filters: fs } })).results; }
       catch { await sleep(5000); try { results = (await checkFilters({ data: { links: domains, filters: fs } })).results; } catch {} }
 
-      const clean = domains.filter((d) => fs.every((f) => results.some((x) => x.site === d && x.filter === f && x.status === "unblocked"))).length;
       setRows((rs) => rs.map((row) => {
         if (!domains.includes(row.domain)) return row;
         const checks = { ...row.checks };
@@ -132,7 +132,7 @@ function Index() {
         }
         return { ...row, checks, category };
       }));
-      setStats((s) => ({ ...s, checked: s.checked + domains.length, clean: s.clean + clean }));
+      setStats((s) => ({ ...s, checked: s.checked + domains.length, clean: 0 }));
       })();
       inflight.add(job2); job2.finally(() => inflight.delete(job2));
     }
@@ -143,12 +143,23 @@ function Index() {
 
   const stop = () => { runRef.current = false; setStatus("Stopping…"); };
   const name = (id: string) => filters.find((f) => f.id === id)?.name ?? id;
-  const isClean = (r: Row) => picked.every((f) => r.checks[f] === "unblocked");
+  const needN = need && need < picked.length ? need : picked.length;
+  const isClean = (r: Row) => picked.filter((f) => r.checks[f] === "unblocked").length >= needN;
+  const isDone = (r: Row) => picked.every((f) => r.checks[f] && r.checks[f] !== "pending");
+  const doneRows = rows.filter(isDone);
+  const cleanCount = doneRows.filter(isClean).length;
+  const errs = picked.map((f) => ({ f, n: rows.filter((r) => r.checks[f] === "error").length })).filter((x) => x.n);
   const shown = onlyClean ? rows.filter(isClean) : rows;
-  const pct = stats.checked ? (stats.clean / stats.checked) * 100 : 0;
+  const pct = doneRows.length ? (cleanCount / doneRows.length) * 100 : 0;
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-10">
+      {errs.length > 0 && (
+        <div role="alert" className="sticky top-2 z-10 mb-4 rounded-xl border border-destructive bg-destructive/15 px-4 py-3 text-sm">
+          <b className="text-destructive">⚠ Filter errors:</b>{" "}
+          {errs.map((e) => `${name(e.f)} failed on ${e.n} domain${e.n > 1 ? "s" : ""}`).join(" · ")}. Those checks count as not unblocked.
+        </div>
+      )}
       <header className="mb-6">
         <h1 className="text-2xl font-bold"><span className="text-gradient">MystixScraperChecker</span></h1>
         <p className="mt-1 text-sm text-muted-foreground">Scrapes every buyable .com / .net / .org from expireddomains.net and checks your filters.</p>
@@ -184,6 +195,23 @@ function Index() {
           {!filters.length && <span className="text-sm text-muted-foreground">Loading filters…</span>}
         </div>
 
+        {picked.length > 1 && (
+          <div className="mt-4">
+            <div className="mb-2 font-mono text-xs text-muted-foreground">COUNT AS ✅ WHEN UNBLOCKED ON</div>
+            <div className="flex flex-wrap gap-2">
+              {Array.from({ length: picked.length }, (_, i) => i + 1).map((n) => {
+                const on = needN === n;
+                return (
+                  <button key={n} onClick={() => setNeed(n === picked.length ? 0 : n)}
+                    className={`rounded-full border px-3 py-1 text-sm ${on ? "border-primary bg-primary/15 text-primary" : "text-muted-foreground"}`}>
+                    {n === picked.length ? `All ${n}` : `${n} of ${picked.length}`}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <div className="mt-4 rounded-lg border p-3 text-sm">
           <div className="flex items-center justify-between">
             <span className="font-mono text-xs text-muted-foreground">EXPIREDDOMAINS ACCOUNT</span>
@@ -213,15 +241,15 @@ function Index() {
 
         <div className="mt-4 flex h-1.5 overflow-hidden rounded-full bg-muted">
           <i className="block h-full bg-success transition-all duration-700" style={{ width: `${pct}%` }} />
-          <i className="block h-full bg-destructive transition-all duration-700" style={{ width: `${stats.checked ? 100 - pct : 0}%` }} />
+          <i className="block h-full bg-destructive transition-all duration-700" style={{ width: `${doneRows.length ? 100 - pct : 0}%` }} />
         </div>
         <p className="mt-3 text-center font-mono text-xs text-muted-foreground">
           {running && <span className="pulse mr-2 inline-block scale-50 align-middle" />}{status}
         </p>
         <p className="mt-1 text-center text-sm font-semibold">
-          <span className="text-success">{stats.clean} unblocked</span>
+          <span className="text-success">{cleanCount} unblocked</span>
           <span className="mx-2 text-muted-foreground">·</span>
-          <span className="text-destructive">{stats.checked - stats.clean} blocked</span>
+          <span className="text-destructive">{doneRows.length - cleanCount} blocked</span>
           <span className="mx-2 text-muted-foreground">·</span>
           <span className="text-muted-foreground">{stats.pages} pages</span>
         </p>
@@ -235,7 +263,7 @@ function Index() {
           </div>
           <ul className="space-y-1.5">
             {shown.map((r) => {
-              const done = picked.every((f) => r.checks[f] && r.checks[f] !== "pending");
+              const done = isDone(r);
               const clean = isClean(r);
               return (
                 <li key={r.domain} className={`chk-row rounded-xl border bg-card px-3 py-2.5 ${done ? (clean ? "ok" : "bad") : ""}`}>
