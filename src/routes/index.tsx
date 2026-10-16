@@ -67,7 +67,7 @@ function Index() {
     <main className="mx-auto max-w-4xl px-4 py-10">
       <header className="mb-8">
         <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted-foreground">powered by LLLogan + RDAP</p>
-        <h1 className="mt-2 text-4xl font-bold sm:text-6xl"><span className="text-gradient">MystixScraperChecker</span></h1>
+        <h1 className="mt-2 break-words text-3xl font-bold sm:text-6xl"><span className="text-gradient">MystixScraperChecker</span></h1>
         <p className="mt-3 text-muted-foreground">Scrape live domains, then see which slip past your filters.</p>
       </header>
 
