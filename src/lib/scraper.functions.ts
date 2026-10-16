@@ -169,7 +169,7 @@ export const scrapeExpiredPage = createServerFn({ method: "POST" })
     const r = await fetch(`https://www.expireddomains.net/${path}/?${qs}`, {
       headers: {
         "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36",
-        ...((data.cookie || process.env["EXPIREDDOMAINS_COOKIE"]) ? { cookie: data.cookie || process.env["EXPIREDDOMAINS_COOKIE"]! } : {}),
+        ...(cookie ? { cookie } : {}),
       },
     });
     if (!r.ok) return { domains: [] as string[], found: 0, status: r.status, walled: false, loggedIn: false };
