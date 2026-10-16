@@ -102,20 +102,30 @@ export const listFilters = createServerFn({ method: "GET" }).handler(async () =>
   return (await r.json()) as { filters: { id: string; name: string; kind: string }[] };
 });
 
+let boot: Promise<Record<string, string>> | null = null;
+function rdapBase(tld: string) {
+  boot ??= fetch("https://data.iana.org/rdap/dns.json").then((r) => r.json()).then((j: any) => {
+    const m: Record<string, string> = {};
+    for (const [tl, urls] of j.services ?? []) for (const t of tl) m[t] = urls[0];
+    return m;
+  }).catch(() => { boot = null; return {}; });
+  return boot.then((m) => m[tld]);
+}
+
 async function isAvailable(domain: string): Promise<boolean> {
-  const tld = domain.split(".").pop();
-  const url = tld === "org"
-    ? `https://rdap.publicinterestregistry.org/rdap/domain/${domain}`
-    : `https://rdap.verisign.com/${tld}/v1/domain/${domain}`;
+  const tld = domain.split(".").pop() ?? "";
+  let base = tld === "com" || tld === "net" ? `https://rdap.verisign.com/${tld}/v1/` : tld === "org" ? "https://rdap.publicinterestregistry.org/rdap/" : await rdapBase(tld);
+  if (!base) base = "https://rdap.org/";
+  if (!base.endsWith("/")) base += "/";
   try {
-    const r = await fetch(url, { headers: { accept: "application/rdap+json" } });
+    const r = await fetch(`${base}domain/${domain}`, { headers: { accept: "application/rdap+json" } });
     return r.status !== 200; // 404 = unregistered; on errors keep it (it is on a deleted list)
   } catch {
     return true;
   }
 }
 
-const ED_TLDS = ["com", "net", "org"] as const;
+const ED_TLDS = ["com", "net", "org", "xyz", "online", "site", "store", "shop", "top", "fun", "space", "club", "info", "biz", "icu", "lol", "website", "tech", "pw", "cc", "us", "io", "co", "me"] as const;
 
 const ORDERS = ["domain", "abirth", "bl", "aentries", "whois", "changes", "domainpop", "statusnet", "statusorg", "statuscom", "statustld_registered", "related_cnobi", "dmoz"];
 
