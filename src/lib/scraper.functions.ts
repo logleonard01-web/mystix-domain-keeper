@@ -120,13 +120,14 @@ const ED_TLDS = ["com", "net", "org"] as const;
 const ORDERS = ["domain", "abirth", "bl", "aentries", "whois", "changes", "domainpop", "statusnet", "statusorg", "statuscom", "statustld_registered", "related_cnobi", "dmoz"];
 
 export const scrapeExpiredPage = createServerFn({ method: "POST" })
-  .inputValidator((d: { list: string; order: string; dir: string; start: number; tlds: string[] }) => {
+  .inputValidator((d: { list: string; order: string; dir: string; start: number; tlds: string[]; cookie?: string }) => {
     const list = d?.list === "com" ? "com" : "all";
     const order = ORDERS.includes(d?.order) ? d.order : "";
     const dir = d?.dir === "d" ? "d" : "a";
     const start = Math.max(0, Math.min(100000, Math.floor(Number(d?.start) || 0)));
     const tlds = (d?.tlds ?? []).filter((t) => ED_TLDS.includes(t as any));
-    return { list, order, dir, start: start - (start % 25), tlds };
+    const cookie = typeof d?.cookie === "string" ? d.cookie.slice(0, 8000) : "";
+    return { list, order, dir, start: start - (start % 25), tlds, cookie };
   })
   .handler(async ({ data }) => {
     const path = data.list === "com" ? "deleted-com-domains" : "deleted-domains";
@@ -135,7 +136,7 @@ export const scrapeExpiredPage = createServerFn({ method: "POST" })
     const r = await fetch(`https://www.expireddomains.net/${path}/?${qs}`, {
       headers: {
         "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36",
-        ...(process.env["EXPIREDDOMAINS_COOKIE"] ? { cookie: process.env["EXPIREDDOMAINS_COOKIE"] } : {}),
+        ...((data.cookie || process.env["EXPIREDDOMAINS_COOKIE"]) ? { cookie: data.cookie || process.env["EXPIREDDOMAINS_COOKIE"]! } : {}),
       },
     });
     if (!r.ok) return { domains: [] as string[], found: 0, status: r.status, walled: false, loggedIn: false };
@@ -151,4 +152,23 @@ export const scrapeExpiredPage = createServerFn({ method: "POST" })
     const avail = await pool([...set], 6, isAvailable);
     const walled = all.size === 0 && /Login to see all Domains/i.test(html);
     return { domains: [...set].filter((_, i) => avail[i]), found: all.size, status: 200, walled, loggedIn };
+  });
+
+export const loginExpired = createServerFn({ method: "POST" })
+  .inputValidator((d: { login: string; password: string }) => ({ login: String(d?.login ?? "").slice(0, 200), password: String(d?.password ?? "").slice(0, 200) }))
+  .handler(async ({ data }) => {
+    const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36";
+    const jar = new Map<string, string>();
+    const eat = (r: Response) => { for (const c of r.headers.getSetCookie?.() ?? []) { const [kv] = c.split(";"); const i = kv!.indexOf("="); if (i > 0) jar.set(kv!.slice(0, i).trim(), kv!.slice(i + 1).trim()); } };
+    const cookie = () => [...jar].map(([k, v]) => `${k}=${v}`).join("; ");
+    eat(await fetch("https://www.expireddomains.net/login/", { headers: { "user-agent": ua } }));
+    const r = await fetch("https://www.expireddomains.net/login/", {
+      method: "POST", redirect: "manual",
+      headers: { "user-agent": ua, "content-type": "application/x-www-form-urlencoded", cookie: cookie(), referer: "https://www.expireddomains.net/login/" },
+      body: new URLSearchParams({ login: data.login, password: data.password, redirect_to_url: "/" }),
+    });
+    eat(r);
+    const check = await fetch("https://www.expireddomains.net/", { headers: { "user-agent": ua, cookie: cookie() } });
+    const ok = /logout/i.test(await check.text());
+    return { ok, cookie: ok ? cookie() : "" };
   });
