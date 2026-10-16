@@ -162,10 +162,10 @@ export const loginExpired = createServerFn({ method: "POST" })
     const eat = (r: Response) => { for (const c of r.headers.getSetCookie?.() ?? []) { const [kv] = c.split(";"); const i = kv!.indexOf("="); if (i > 0) jar.set(kv!.slice(0, i).trim(), kv!.slice(i + 1).trim()); } };
     const cookie = () => [...jar].map(([k, v]) => `${k}=${v}`).join("; ");
     eat(await fetch("https://www.expireddomains.net/login/", { headers: { "user-agent": ua } }));
-    const r = await fetch("https://www.expireddomains.net/login/", {
+    const r = await fetch("https://www.expireddomains.net/logincheck/", {
       method: "POST", redirect: "manual",
       headers: { "user-agent": ua, "content-type": "application/x-www-form-urlencoded", cookie: cookie(), referer: "https://www.expireddomains.net/login/" },
-      body: new URLSearchParams({ login: data.login, password: data.password, redirect_to_url: "/" }),
+      body: new URLSearchParams({ login: data.login, password: data.password, rememberme: "1" }),
     });
     eat(r);
     const check = await fetch("https://www.expireddomains.net/", { headers: { "user-agent": ua, cookie: cookie() } });
