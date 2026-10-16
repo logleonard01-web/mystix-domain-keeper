@@ -124,7 +124,7 @@ export const scrapeExpiredPage = createServerFn({ method: "POST" })
     const list = d?.list === "com" ? "com" : "all";
     const order = ORDERS.includes(d?.order) ? d.order : "";
     const dir = d?.dir === "d" ? "d" : "a";
-    const start = Math.max(0, Math.min(300, Math.floor(Number(d?.start) || 0)));
+    const start = Math.max(0, Math.min(100000, Math.floor(Number(d?.start) || 0)));
     const tlds = (d?.tlds ?? []).filter((t) => ED_TLDS.includes(t as any));
     return { list, order, dir, start: start - (start % 25), tlds };
   })
@@ -133,10 +133,14 @@ export const scrapeExpiredPage = createServerFn({ method: "POST" })
     const qs = new URLSearchParams({ start: String(data.start) });
     if (data.order) { qs.set("o", data.order); qs.set("r", data.dir); }
     const r = await fetch(`https://www.expireddomains.net/${path}/?${qs}`, {
-      headers: { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36" },
+      headers: {
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36",
+        ...(process.env["EXPIREDDOMAINS_COOKIE"] ? { cookie: process.env["EXPIREDDOMAINS_COOKIE"] } : {}),
+      },
     });
-    if (!r.ok) return { domains: [] as string[], found: 0, status: r.status };
+    if (!r.ok) return { domains: [] as string[], found: 0, status: r.status, walled: false, loggedIn: false };
     const html = await r.text();
+    const loggedIn = /logout/i.test(html);
     const all = new Set<string>();
     const set = new Set<string>();
     for (const m of html.matchAll(/class="namelinks"[^>]*>([^<]+)</g)) {
@@ -145,5 +149,6 @@ export const scrapeExpiredPage = createServerFn({ method: "POST" })
       if (data.tlds.some((t) => d.endsWith(`.${t}`)) && DOMAIN_RE.test(d)) set.add(d);
     }
     const avail = await pool([...set], 6, isAvailable);
-    return { domains: [...set].filter((_, i) => avail[i]), found: all.size, status: 200 };
+    const walled = all.size === 0 && /Login to see all Domains/i.test(html);
+    return { domains: [...set].filter((_, i) => avail[i]), found: all.size, status: 200, walled, loggedIn };
   });

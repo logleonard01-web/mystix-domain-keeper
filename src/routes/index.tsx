@@ -58,19 +58,30 @@ function Index() {
     const jobs = shuffle(lists.flatMap((list) => orders.flatMap((order) => (order ? ["a", "d"] : ["a"]).flatMap((dir) =>
       Array.from({ length: 13 }, (_, p) => ({ list, order, dir, start: p * 25 }))))));
     const empty = new Set<string>();
+    const deep = new Set<string>();
 
     while (runRef.current) {
       const job = jobs.pop();
       if (!job) { setStatus("Finished every page"); break; }
       const key = `${job.list}|${job.order}|${job.dir}`;
-      if (empty.has(key)) continue;
+      if (empty.has(key) && job.start > 0) continue;
       setStatus(`Scraping ${job.list === "com" ? ".com" : ".net/.org"} list${job.order ? ` (${job.order})` : ""} page ${job.start / 25 + 1}… · ${jobs.length} left`);
       const tld = job.list === "com" ? "com" : tlds.filter((t) => t !== "com").join("/");
 
       let domains: string[] = [];
       try {
         const res = await scrapeExpiredPage({ data: { ...job, tlds } });
-        if (!res.found && job.start === 0) empty.add(key);
+        if (res.walled) {
+          jobs.push(job);
+          setStatus("expireddomains.net is asking for a login — waiting 60s then retrying…");
+          for (let i = 0; i < 60 && runRef.current; i++) await sleep(1000);
+          continue;
+        }
+        if (res.loggedIn && job.start === 0 && !deep.has(key)) {
+          deep.add(key);
+          for (let p = 13; p < 400; p++) jobs.splice(Math.floor(Math.random() * (jobs.length + 1)), 0, { ...job, start: p * 25 });
+        }
+        if (!res.found) { empty.add(key); continue; }
         domains = shuffle(res.domains.filter((d) => !seen.has(d)));
       } catch { await sleep(3000); continue; }
       domains.forEach((d) => seen.add(d));
@@ -98,7 +109,7 @@ function Index() {
         return { ...row, checks, category };
       }));
       setStats((s) => ({ ...s, checked: s.checked + domains.length, clean: s.clean + clean }));
-      await sleep(1200);
+      await sleep(2500);
     }
     runRef.current = false; setRunning(false);
     setStatus((s) => (s.startsWith("Finished") ? s : "Stopped"));
