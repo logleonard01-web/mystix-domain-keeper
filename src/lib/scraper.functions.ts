@@ -129,24 +129,47 @@ const ED_TLDS = ["com", "net", "org", "xyz", "online", "site", "store", "shop", 
 
 const ORDERS = ["domain", "abirth", "bl", "aentries", "whois", "changes", "domainpop", "statusnet", "statusorg", "statuscom", "statustld_registered", "related_cnobi", "dmoz"];
 
+// TLD filter ids from the site's filter panel (only rendered for logged-in users)
+let tldIds: Record<string, string> | null = null;
+async function tldId(tld: string, cookie: string): Promise<string | null> {
+  if (!tldIds) {
+    tldIds = {};
+    try {
+      const r = await fetch("https://www.expireddomains.net/deleted-domains/", { headers: { "user-agent": UA, cookie } });
+      const html = await r.text();
+      for (const m of html.matchAll(/value="(\d+)"[^>]*>\s*(?:<[^>]+>\s*)*\.([a-z]{2,24})\b/gi)) {
+        if (m[1] && m[2]) tldIds[m[2].toLowerCase()] = m[1];
+      }
+    } catch { /* keep empty */ }
+  }
+  return tldIds[tld] ?? null;
+}
+
 export const scrapeExpiredPage = createServerFn({ method: "POST" })
-  .inputValidator((d: { list: string; order: string; dir: string; start: number; tlds: string[]; cookie?: string }) => {
+  .inputValidator((d: { list: string; order: string; dir: string; start: number; tlds: string[]; cookie?: string; ftld?: string }) => {
     const list = d?.list === "com" ? "com" : "all";
     const order = ORDERS.includes(d?.order) ? d.order : "";
     const dir = d?.dir === "d" ? "d" : "a";
     const start = Math.max(0, Math.min(100000, Math.floor(Number(d?.start) || 0)));
     const tlds = (d?.tlds ?? []).filter((t) => ED_TLDS.includes(t as any));
     const cookie = typeof d?.cookie === "string" ? d.cookie.slice(0, 8000) : "";
-    return { list, order, dir, start: start - (start % 25), tlds, cookie };
+    const ftld = ED_TLDS.includes(d?.ftld as any) ? d.ftld : "";
+    return { list, order, dir, start: start - (start % 25), tlds, cookie, ftld };
   })
   .handler(async ({ data }) => {
     const path = data.list === "com" ? "deleted-com-domains" : "deleted-domains";
     const qs = new URLSearchParams({ start: String(data.start) });
     if (data.order) { qs.set("o", data.order); qs.set("r", data.dir); }
+    const cookie = data.cookie || process.env["EXPIREDDOMAINS_COOKIE"] || "";
+    // logged-in users get a server-side TLD filter: every row on the page is that TLD
+    if (data.ftld && cookie) {
+      const id = await tldId(data.ftld, cookie);
+      if (id) qs.set("ftlds[]", id);
+    }
     const r = await fetch(`https://www.expireddomains.net/${path}/?${qs}`, {
       headers: {
         "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36",
-        ...((data.cookie || process.env["EXPIREDDOMAINS_COOKIE"]) ? { cookie: data.cookie || process.env["EXPIREDDOMAINS_COOKIE"]! } : {}),
+        ...(cookie ? { cookie } : {}),
       },
     });
     if (!r.ok) return { domains: [] as string[], found: 0, status: r.status, walled: false, loggedIn: false };
