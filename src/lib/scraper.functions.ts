@@ -34,7 +34,7 @@ async function pool<T, R>(items: T[], n: number, fn: (t: T) => Promise<R>) {
     Array.from({ length: Math.min(n, items.length) }, async () => {
       while (i < items.length) {
         const idx = i++;
-        out[idx] = await fn(items[idx]);
+        out[idx] = await fn(items[idx] as T);
       }
     }),
   );
@@ -63,7 +63,7 @@ export const scrapeDomains = createServerFn({ method: "POST" })
       const html = (await res.text()).slice(0, 2_000_000);
       const set = new Set<string>();
       for (const m of html.matchAll(/(?:https?:)?\/\/([a-z0-9.-]+\.[a-z]{2,24})/gi)) {
-        const h = m[1].toLowerCase().replace(/^www\./, "");
+        const h = (m[1] ?? "").toLowerCase().replace(/^www\./, "");
         if (DOMAIN_RE.test(h)) set.add(h);
       }
       for (const m of html.matchAll(/\b([a-z0-9-]+\.)+(?:com|net|org|io|xyz|app|dev|me|co|site|online|lol|fun|space|club|gg|tk|ml|ga|cf)\b/gi)) {
@@ -88,7 +88,7 @@ export const checkFilters = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const r = await fetch(`${API}/bulk`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${process.env.LLLOGAN_API_KEY}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${process.env["LLLOGAN_API_KEY"]}`, "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
     if (!r.ok) throw new Error(`Checker error (${r.status})`);
@@ -97,7 +97,7 @@ export const checkFilters = createServerFn({ method: "POST" })
   });
 
 export const listFilters = createServerFn({ method: "GET" }).handler(async () => {
-  const r = await fetch(`${API}/filters`, { headers: { Authorization: `Bearer ${process.env.LLLOGAN_API_KEY}` } });
+  const r = await fetch(`${API}/filters`, { headers: { Authorization: `Bearer ${process.env["LLLOGAN_API_KEY"]}` } });
   if (!r.ok) return { filters: [] as { id: string; name: string; kind: string }[] };
   return (await r.json()) as { filters: { id: string; name: string; kind: string }[] };
 });
