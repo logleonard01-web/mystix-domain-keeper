@@ -84,7 +84,7 @@ function Index() {
       try { results = (await checkFilters({ data: { links: domains, filters: fs } })).results; }
       catch { setStatus("Checker busy, waiting…"); await sleep(10000); }
 
-      let clean = 0;
+      const clean = domains.filter((d) => fs.every((f) => results.some((x) => x.site === d && x.filter === f && x.status === "unblocked"))).length;
       setRows((rs) => rs.map((row) => {
         if (!domains.includes(row.domain)) return row;
         const checks = { ...row.checks };
@@ -94,10 +94,8 @@ function Index() {
           checks[f] = r?.status === "unblocked" ? "unblocked" : r?.status === "blocked" ? "blocked" : "error";
           if (r?.category) category = r.category;
         }
-        if (fs.every((f) => checks[f] === "unblocked")) clean++;
         return { ...row, checks, category };
       }));
-      await sleep(0);
       setStats((s) => ({ ...s, checked: s.checked + domains.length, clean: s.clean + clean }));
       await sleep(1200);
     }
