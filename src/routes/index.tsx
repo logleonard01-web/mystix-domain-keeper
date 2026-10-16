@@ -78,9 +78,11 @@ function Index() {
     const orders = ["", "domain", "abirth", "bl", "aentries", "whois", "changes", "domainpop", "statusnet", "statusorg", "statuscom", "statustld_registered", "related_cnobi", "dmoz"];
     // one job stream per TLD: with an account connected the site filters server-side,
     // so every page is dense with that ending instead of a rare trickle
+    const others = tlds.filter((t) => t !== "com");
     const streams = [
       ...(tlds.includes("com") ? [{ list: "com", ftld: "" }] : []),
-      ...tlds.filter((t) => t !== "com").map((t) => ({ list: "all", ftld: t })),
+      // guests can't use the site's TLD filter, so one shared unfiltered stream
+      ...(cookie ? others.map((t) => ({ list: "all", ftld: t })) : others.length ? [{ list: "all", ftld: "" }] : []),
     ];
     const jobs = shuffle(streams.flatMap((s) => orders.flatMap((order) => (order ? ["a", "d"] : ["a"]).flatMap((dir) =>
       Array.from({ length: 13 }, (_, p) => ({ ...s, order, dir, start: p * 25 }))))));
