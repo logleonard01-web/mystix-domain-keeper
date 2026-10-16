@@ -95,7 +95,7 @@ function Index() {
       if (!job) { setStatus("Finished every page"); break; }
       const key = `${job.list}|${job.ftld}|${job.order}|${job.dir}`;
       if (empty.has(key) && job.start > 0) continue;
-      await sleep(800);
+      await sleep(400);
       setStatus(`Scraping .${job.ftld || "com"} list${job.order ? ` (${job.order})` : ""} page ${job.start / 25 + 1}… · ${jobs.length} left`);
 
       let domains: string[] = [];
@@ -118,29 +118,35 @@ function Index() {
       setStats((s) => ({ ...s, pages: s.pages + 1, scraped: s.scraped + domains.length }));
       if (!domains.length || !runRef.current) continue;
 
-      while (inflight.size >= 3 && runRef.current) await Promise.race(inflight);
-      const job2 = (async () => {
       const pending = Object.fromEntries(fs.map((f) => [f, "pending" as Status]));
       setRows((r) => [...domains.map((d) => ({ domain: d, checks: { ...pending } })), ...r].slice(0, 5000));
 
-      let results: { site: string; filter: string; status: string; category: string | null }[] = [];
-      try { results = (await checkFilters({ data: { links: domains, filters: fs } })).results; }
-      catch { await sleep(5000); try { results = (await checkFilters({ data: { links: domains, filters: fs } })).results; } catch {} }
+      // small chunks so each checker request finishes in seconds, not minutes
+      const chunks: string[][] = [];
+      for (let i = 0; i < domains.length; i += 8) chunks.push(domains.slice(i, i + 8));
+      for (const chunk of chunks) {
+        while (inflight.size >= 5 && runRef.current) await Promise.race(inflight);
+        if (!runRef.current) break;
+        const job2 = (async () => {
+          let results: { site: string; filter: string; status: string; category: string | null }[] = [];
+          try { results = (await checkFilters({ data: { links: chunk, filters: fs } })).results; }
+          catch { await sleep(3000); try { results = (await checkFilters({ data: { links: chunk, filters: fs } })).results; } catch {} }
 
-      setRows((rs) => rs.map((row) => {
-        if (!domains.includes(row.domain)) return row;
-        const checks = { ...row.checks };
-        let category = row.category;
-        for (const f of fs) {
-          const r = results.find((x) => x.site === row.domain && x.filter === f);
-          checks[f] = r?.status === "unblocked" ? "unblocked" : r?.status === "blocked" ? "blocked" : "error";
-          if (r?.category) category = r.category;
-        }
-        return { ...row, checks, category };
-      }));
-      setStats((s) => ({ ...s, checked: s.checked + domains.length, clean: 0 }));
-      })();
-      inflight.add(job2); job2.finally(() => inflight.delete(job2));
+          setRows((rs) => rs.map((row) => {
+            if (!chunk.includes(row.domain)) return row;
+            const checks = { ...row.checks };
+            let category = row.category;
+            for (const f of fs) {
+              const r = results.find((x) => x.site === row.domain && x.filter === f);
+              checks[f] = r?.status === "unblocked" ? "unblocked" : r?.status === "blocked" ? "blocked" : "error";
+              if (r?.category) category = r.category;
+            }
+            return { ...row, checks, category };
+          }));
+          setStats((s) => ({ ...s, checked: s.checked + chunk.length }));
+        })();
+        inflight.add(job2); job2.finally(() => inflight.delete(job2));
+      }
     }
     await Promise.all(inflight);
     runRef.current = false; setRunning(false);
