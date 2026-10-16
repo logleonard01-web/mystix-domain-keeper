@@ -102,6 +102,19 @@ export const listFilters = createServerFn({ method: "GET" }).handler(async () =>
   return (await r.json()) as { filters: { id: string; name: string; kind: string }[] };
 });
 
+async function isAvailable(domain: string): Promise<boolean> {
+  const tld = domain.split(".").pop();
+  const url = tld === "org"
+    ? `https://rdap.publicinterestregistry.org/rdap/domain/${domain}`
+    : `https://rdap.verisign.com/${tld}/v1/domain/${domain}`;
+  try {
+    const r = await fetch(url, { headers: { accept: "application/rdap+json" } });
+    return r.status !== 200; // 404 = unregistered; on errors keep it (it is on a deleted list)
+  } catch {
+    return true;
+  }
+}
+
 const ED_TLDS = ["com", "net", "org"] as const;
 
 export const scrapeExpiredPage = createServerFn({ method: "POST" })
@@ -122,6 +135,6 @@ export const scrapeExpiredPage = createServerFn({ method: "POST" })
       if (d.endsWith(`.${data.tld}`) && DOMAIN_RE.test(d)) set.add(d);
     }
     // keep only ones RDAP confirms are unregistered (buyable)
-    const infos = await pool([...set], 6, rdap);
-    return { domains: infos.filter((i) => !i.registered).map((i) => i.domain), found: set.size, status: 200 };
+    const avail = await pool([...set], 6, isAvailable);
+    return { domains: [...set].filter((_, i) => avail[i]), found: set.size, status: 200 };
   });
