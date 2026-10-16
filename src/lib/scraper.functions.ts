@@ -101,3 +101,27 @@ export const listFilters = createServerFn({ method: "GET" }).handler(async () =>
   if (!r.ok) return { filters: [] as { id: string; name: string; kind: string }[] };
   return (await r.json()) as { filters: { id: string; name: string; kind: string }[] };
 });
+
+const ED_TLDS = ["com", "net", "org"] as const;
+
+export const scrapeExpiredPage = createServerFn({ method: "POST" })
+  .inputValidator((d: { tld: string; start: number }) => {
+    const tld = ED_TLDS.includes(d?.tld as any) ? d.tld : "com";
+    const start = Math.max(0, Math.min(1_000_000, Math.floor(Number(d?.start) || 0)));
+    return { tld, start: start - (start % 25) };
+  })
+  .handler(async ({ data }) => {
+    const r = await fetch(`https://www.expireddomains.net/deleted-${data.tld}-domains/?start=${data.start}`, {
+      headers: { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36" },
+    });
+    if (!r.ok) return { domains: [] as string[], status: r.status };
+    const html = await r.text();
+    const set = new Set<string>();
+    for (const m of html.matchAll(/class="namelinks"[^>]*>([^<]+)</g)) {
+      const d = (m[1] ?? "").trim().toLowerCase();
+      if (d.endsWith(`.${data.tld}`) && DOMAIN_RE.test(d)) set.add(d);
+    }
+    // keep only ones RDAP confirms are unregistered (buyable)
+    const infos = await pool([...set], 6, rdap);
+    return { domains: infos.filter((i) => !i.registered).map((i) => i.domain), found: set.size, status: 200 };
+  });
