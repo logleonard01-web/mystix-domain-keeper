@@ -16,7 +16,7 @@ export const Route = createFileRoute("/")({
 
 type Filter = { id: string; name: string; kind: string };
 type Status = "pending" | "unblocked" | "blocked" | "error";
-type Row = { domain: string; checks: Record<string, Status>; category?: string };
+type Row = { domain: string; checks: Record<string, Status>; category?: string | undefined };
 const MAX = 3;
 const TLDS = ["com", "net", "org"];
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
