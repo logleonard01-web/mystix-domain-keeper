@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { checkFilters, listFilters, scrapeExpiredPage } from "@/lib/scraper.functions";
+import { checkFilters, listFilters, loginExpired, scrapeExpiredPage } from "@/lib/scraper.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
