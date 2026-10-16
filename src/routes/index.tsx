@@ -6,7 +6,7 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "MystixScraperChecker — Unblocked domains you can buy" },
-      { name: "description", content: "Scrapes deleted .com/.net/.org domains from expireddomains.net and checks them against Securly and other filters." },
+      { name: "description", content: "Scrapes deleted .com, .net, .org and cheap-TLD domains from expireddomains.net and checks them against Securly and other filters." },
       { property: "og:title", content: "MystixScraperChecker" },
       { property: "og:description", content: "Find buyable domains that are unblocked on Securly, GoGuardian and more." },
     ],
@@ -18,7 +18,7 @@ type Filter = { id: string; name: string; kind: string };
 type Status = "pending" | "unblocked" | "blocked" | "error";
 type Row = { domain: string; checks: Record<string, Status>; category?: string | undefined };
 const MAX = 3;
-const TLDS = ["com", "net", "org"];
+const TLDS = ["com", "net", "org", "xyz", "online", "site", "store", "shop", "top", "fun", "space", "club", "info", "biz", "icu", "lol", "website", "tech", "pw", "cc", "us", "io", "co", "me"];
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const shuffle = <T,>(a: T[]) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j] as T, a[i] as T]; } return a; };
 
@@ -34,7 +34,7 @@ function Mark({ s }: { s: Status }) {
 function Index() {
   const [filters, setFilters] = useState<Filter[]>([]);
   const [picked, setPicked] = useState<string[]>(["securly", "goguardianv3", "lightspeed"]);
-  const [tlds, setTlds] = useState<string[]>(TLDS);
+  const [tlds, setTlds] = useState<string[]>(["com", "net", "org", "xyz", "online", "site", "shop", "top"]);
   const [rows, setRows] = useState<Row[]>([]);
   const [running, setRunning] = useState(false);
   const [status, setStatus] = useState("Idle");
@@ -89,7 +89,7 @@ function Index() {
       const key = `${job.list}|${job.order}|${job.dir}`;
       if (empty.has(key) && job.start > 0) continue;
       await sleep(800);
-      setStatus(`Scraping ${job.list === "com" ? ".com" : ".net/.org"} list${job.order ? ` (${job.order})` : ""} page ${job.start / 25 + 1}… · ${jobs.length} left`);
+      setStatus(`Scraping ${job.list === "com" ? ".com" : "other TLDs"} list${job.order ? ` (${job.order})` : ""} page ${job.start / 25 + 1}… · ${jobs.length} left`);
       const tld = job.list === "com" ? "com" : tlds.filter((t) => t !== "com").join("/");
 
       let domains: string[] = [];
@@ -162,7 +162,7 @@ function Index() {
       )}
       <header className="mb-6">
         <h1 className="text-2xl font-bold"><span className="text-gradient">MystixScraperChecker</span></h1>
-        <p className="mt-1 text-sm text-muted-foreground">Scrapes every buyable .com / .net / .org from expireddomains.net and checks your filters.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Scrapes every buyable domain (.com, .net, .org and cheap TLDs like .xyz, .site, .top) from expireddomains.net and checks your filters.</p>
       </header>
 
       <section className="rounded-2xl border bg-card p-5 shadow-glow">
