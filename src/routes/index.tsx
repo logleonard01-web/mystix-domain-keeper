@@ -57,7 +57,8 @@ function Index() {
     tlds.forEach((t) => (state[t] = { max: 4000, done: new Set() }));
 
     while (runRef.current) {
-      const open = tlds.filter((t) => state[t]!.done.size < state[t]!.max);
+      const left = (t: string) => { const st = state[t]!; let n = 0; st.done.forEach((p) => p < st.max && n++); return st.max - n; };
+      const open = tlds.filter((t) => left(t) > 0);
       if (!open.length) { setStatus("Finished every page"); break; }
       const tld = open[Math.floor(Math.random() * open.length)]!;
       const st = state[tld]!;
