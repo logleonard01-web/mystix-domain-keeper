@@ -41,6 +41,18 @@ function Index() {
   const [stats, setStats] = useState({ pages: 0, scraped: 0, checked: 0, clean: 0 });
   const [onlyClean, setOnlyClean] = useState(false);
   const runRef = useRef(false);
+  const [cookie, setCookie] = useState("");
+  const [acct, setAcct] = useState({ login: "", password: "", open: false, msg: "" });
+  useEffect(() => { setCookie(localStorage.getItem("ed_cookie") ?? ""); }, []);
+  const saveCookie = (c: string) => { setCookie(c); c ? localStorage.setItem("ed_cookie", c) : localStorage.removeItem("ed_cookie"); };
+  async function doLogin() {
+    setAcct((a) => ({ ...a, msg: "Signing in…" }));
+    try {
+      const r = await loginExpired({ data: { login: acct.login, password: acct.password } });
+      if (r.ok) { saveCookie(r.cookie); setAcct({ login: "", password: "", open: false, msg: "Signed in ✅" }); }
+      else setAcct((a) => ({ ...a, msg: "Sign-in failed — paste your cookie instead" }));
+    } catch { setAcct((a) => ({ ...a, msg: "Sign-in failed — paste your cookie instead" })); }
+  }
 
   useEffect(() => { listFilters().then((r) => setFilters(r.filters)).catch(() => {}); }, []);
 
@@ -59,19 +71,20 @@ function Index() {
       Array.from({ length: 13 }, (_, p) => ({ list, order, dir, start: p * 25 }))))));
     const empty = new Set<string>();
     const deep = new Set<string>();
+    const inflight = new Set<Promise<void>>();
 
     while (runRef.current) {
       const job = jobs.pop();
       if (!job) { setStatus("Finished every page"); break; }
       const key = `${job.list}|${job.order}|${job.dir}`;
       if (empty.has(key) && job.start > 0) continue;
-      await sleep(1500);
+      await sleep(800);
       setStatus(`Scraping ${job.list === "com" ? ".com" : ".net/.org"} list${job.order ? ` (${job.order})` : ""} page ${job.start / 25 + 1}… · ${jobs.length} left`);
       const tld = job.list === "com" ? "com" : tlds.filter((t) => t !== "com").join("/");
 
       let domains: string[] = [];
       try {
-        const res = await scrapeExpiredPage({ data: { ...job, tlds } });
+        const res = await scrapeExpiredPage({ data: { ...job, tlds, cookie } });
         if (res.walled) {
           jobs.push(job);
           setStatus("expireddomains.net is asking for a login — waiting 60s then retrying…");
@@ -89,13 +102,14 @@ function Index() {
       setStats((s) => ({ ...s, pages: s.pages + 1, scraped: s.scraped + domains.length }));
       if (!domains.length || !runRef.current) continue;
 
+      while (inflight.size >= 3 && runRef.current) await Promise.race(inflight);
+      const job2 = (async () => {
       const pending = Object.fromEntries(fs.map((f) => [f, "pending" as Status]));
       setRows((r) => [...domains.map((d) => ({ domain: d, checks: { ...pending } })), ...r].slice(0, 500));
-      setStatus(`Checking ${domains.length} buyable .${tld} domains…`);
 
       let results: { site: string; filter: string; status: string; category: string | null }[] = [];
       try { results = (await checkFilters({ data: { links: domains, filters: fs } })).results; }
-      catch { setStatus("Checker busy, waiting…"); await sleep(10000); }
+      catch { await sleep(5000); try { results = (await checkFilters({ data: { links: domains, filters: fs } })).results; } catch {} }
 
       const clean = domains.filter((d) => fs.every((f) => results.some((x) => x.site === d && x.filter === f && x.status === "unblocked"))).length;
       setRows((rs) => rs.map((row) => {
@@ -110,8 +124,10 @@ function Index() {
         return { ...row, checks, category };
       }));
       setStats((s) => ({ ...s, checked: s.checked + domains.length, clean: s.clean + clean }));
-      await sleep(2500);
+      })();
+      inflight.add(job2); job2.finally(() => inflight.delete(job2));
     }
+    await Promise.all(inflight);
     runRef.current = false; setRunning(false);
     setStatus((s) => (s.startsWith("Finished") ? s : "Stopped"));
   }
@@ -157,6 +173,24 @@ function Index() {
             );
           })}
           {!filters.length && <span className="text-sm text-muted-foreground">Loading filters…</span>}
+        </div>
+
+        <div className="mt-4 rounded-lg border p-3 text-sm">
+          <div className="flex items-center justify-between">
+            <span className="font-mono text-xs text-muted-foreground">EXPIREDDOMAINS ACCOUNT</span>
+            {cookie ? <button onClick={() => saveCookie("")} className="text-xs text-destructive">Sign out</button>
+              : <button onClick={() => setAcct((a) => ({ ...a, open: !a.open }))} className="text-xs text-primary">{acct.open ? "Close" : "+ Add account"}</button>}
+          </div>
+          {cookie && <p className="mt-1 text-xs text-success">Account connected — all pages unlocked</p>}
+          {!cookie && acct.open && (
+            <div className="mt-2 space-y-2">
+              <input value={acct.login} onChange={(e) => setAcct((a) => ({ ...a, login: e.target.value }))} placeholder="Username" className="w-full rounded-md border bg-background px-2 py-1.5" />
+              <input type="password" value={acct.password} onChange={(e) => setAcct((a) => ({ ...a, password: e.target.value }))} placeholder="Password" className="w-full rounded-md border bg-background px-2 py-1.5" />
+              <button onClick={doLogin} disabled={!acct.login || !acct.password} className="w-full rounded-md bg-primary py-1.5 text-primary-foreground disabled:opacity-40">Sign in</button>
+              <textarea onBlur={(e) => e.target.value.trim() && saveCookie(e.target.value.trim())} placeholder="…or paste your expireddomains.net cookie" rows={2} className="w-full rounded-md border bg-background px-2 py-1.5 font-mono text-xs" />
+            </div>
+          )}
+          {acct.msg && <p className="mt-1 text-xs text-muted-foreground">{acct.msg}</p>}
         </div>
 
         <button onClick={running ? stop : start} disabled={!picked.length || !tlds.length}
