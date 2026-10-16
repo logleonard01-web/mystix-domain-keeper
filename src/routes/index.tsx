@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { checkFilters, listFilters, loginExpired, scrapeExpiredPage } from "@/lib/scraper.functions";
+import { checkFilters, listFilters, loginExpired, scrapeExpiredPage, verifyExpiredCode } from "@/lib/scraper.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -42,14 +42,23 @@ function Index() {
   const [onlyClean, setOnlyClean] = useState(false);
   const runRef = useRef(false);
   const [cookie, setCookie] = useState("");
-  const [acct, setAcct] = useState({ login: "", password: "", open: false, msg: "" });
+  const [acct, setAcct] = useState({ login: "", password: "", open: false, msg: "", code: "", authUrl: "", pend: "" });
   useEffect(() => { setCookie(localStorage.getItem("ed_cookie") ?? ""); }, []);
   const saveCookie = (c: string) => { setCookie(c); c ? localStorage.setItem("ed_cookie", c) : localStorage.removeItem("ed_cookie"); };
+  async function doVerify() {
+    setAcct((a) => ({ ...a, msg: "Verifying…" }));
+    try {
+      const r = await verifyExpiredCode({ data: { authUrl: acct.authUrl, cookie: acct.pend, code: acct.code } });
+      if (r.ok) { saveCookie(r.cookie); setAcct((a) => ({ ...a, password: "", open: false, code: "", authUrl: "", pend: "", msg: "Signed in ✅" })); }
+      else setAcct((a) => ({ ...a, msg: "Code didn't work — try again" }));
+    } catch { setAcct((a) => ({ ...a, msg: "Code didn't work — try again" })); }
+  }
   async function doLogin() {
     setAcct((a) => ({ ...a, msg: "Signing in…" }));
     try {
       const r = await loginExpired({ data: { login: acct.login, password: acct.password } });
-      if (r.ok) { saveCookie(r.cookie); setAcct({ login: "", password: "", open: false, msg: "Signed in ✅" }); }
+      if (r.ok) { saveCookie(r.cookie); setAcct((a) => ({ ...a, login: "", password: "", open: false, msg: "Signed in ✅" })); }
+      else if (r.needsCode) setAcct((a) => ({ ...a, authUrl: r.authUrl, pend: r.cookie, msg: "Enter the code expireddomains.net just emailed you" }));
       else setAcct((a) => ({ ...a, msg: "Sign-in failed — paste your cookie instead" }));
     } catch { setAcct((a) => ({ ...a, msg: "Sign-in failed — paste your cookie instead" })); }
   }
@@ -186,6 +195,10 @@ function Index() {
             <div className="mt-2 space-y-2">
               <input value={acct.login} onChange={(e) => setAcct((a) => ({ ...a, login: e.target.value }))} placeholder="Username" className="w-full rounded-md border bg-background px-2 py-1.5" />
               <input type="password" value={acct.password} onChange={(e) => setAcct((a) => ({ ...a, password: e.target.value }))} placeholder="Password" className="w-full rounded-md border bg-background px-2 py-1.5" />
+              {acct.authUrl && (<div className="flex gap-2">
+                <input value={acct.code} onChange={(e) => setAcct((a) => ({ ...a, code: e.target.value }))} placeholder="Email code" className="flex-1 rounded-md border bg-background px-2 py-1.5" />
+                <button onClick={doVerify} disabled={!acct.code} className="rounded-md bg-primary px-3 text-primary-foreground disabled:opacity-40">Verify</button>
+              </div>)}
               <button onClick={doLogin} disabled={!acct.login || !acct.password} className="w-full rounded-md bg-primary py-1.5 text-primary-foreground disabled:opacity-40">Sign in</button>
               <textarea onBlur={(e) => e.target.value.trim() && saveCookie(e.target.value.trim())} placeholder="…or paste your expireddomains.net cookie" rows={2} className="w-full rounded-md border bg-background px-2 py-1.5 font-mono text-xs" />
             </div>

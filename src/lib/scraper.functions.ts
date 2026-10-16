@@ -154,21 +154,46 @@ export const scrapeExpiredPage = createServerFn({ method: "POST" })
     return { domains: [...set].filter((_, i) => avail[i]), found: all.size, status: 200, walled, loggedIn };
   });
 
+const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36";
+function jarOf(str: string) { const m = new Map<string, string>(); for (const p of str.split(";")) { const i = p.indexOf("="); if (i > 0) m.set(p.slice(0, i).trim(), p.slice(i + 1).trim()); } return m; }
+function eat(jar: Map<string, string>, r: Response) { for (const c of r.headers.getSetCookie?.() ?? []) { const kv = c.split(";")[0] ?? ""; const i = kv.indexOf("="); if (i > 0) jar.set(kv.slice(0, i).trim(), kv.slice(i + 1).trim()); } }
+const ser = (jar: Map<string, string>) => [...jar].map(([k, v]) => `${k}=${v}`).join("; ");
+async function finish(jar: Map<string, string>, r: Response) {
+  eat(jar, r);
+  const loc = r.headers.get("location") ?? "";
+  if (/emailauth/.test(loc)) return { ok: false, needsCode: true, authUrl: new URL(loc, "https://www.expireddomains.net").href, cookie: ser(jar) };
+  const check = await fetch("https://www.expireddomains.net/", { headers: { "user-agent": UA, cookie: ser(jar) } });
+  eat(jar, check);
+  const ok = /logout/i.test(await check.text());
+  return { ok, needsCode: false, authUrl: "", cookie: ok ? ser(jar) : "" };
+}
+
 export const loginExpired = createServerFn({ method: "POST" })
   .inputValidator((d: { login: string; password: string }) => ({ login: String(d?.login ?? "").slice(0, 200), password: String(d?.password ?? "").slice(0, 200) }))
   .handler(async ({ data }) => {
-    const ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36";
     const jar = new Map<string, string>();
-    const eat = (r: Response) => { for (const c of r.headers.getSetCookie?.() ?? []) { const [kv] = c.split(";"); const i = kv!.indexOf("="); if (i > 0) jar.set(kv!.slice(0, i).trim(), kv!.slice(i + 1).trim()); } };
-    const cookie = () => [...jar].map(([k, v]) => `${k}=${v}`).join("; ");
-    eat(await fetch("https://www.expireddomains.net/login/", { headers: { "user-agent": ua } }));
+    eat(jar, await fetch("https://www.expireddomains.net/login/", { headers: { "user-agent": UA } }));
     const r = await fetch("https://www.expireddomains.net/logincheck/", {
       method: "POST", redirect: "manual",
-      headers: { "user-agent": ua, "content-type": "application/x-www-form-urlencoded", cookie: cookie(), referer: "https://www.expireddomains.net/login/" },
+      headers: { "user-agent": UA, "content-type": "application/x-www-form-urlencoded", cookie: ser(jar), referer: "https://www.expireddomains.net/login/" },
       body: new URLSearchParams({ login: data.login, password: data.password, rememberme: "1" }),
     });
-    eat(r);
-    const check = await fetch("https://www.expireddomains.net/", { headers: { "user-agent": ua, cookie: cookie() } });
-    const ok = /logout/i.test(await check.text());
-    return { ok, cookie: ok ? cookie() : "" };
+    return finish(jar, r);
+  });
+
+export const verifyExpiredCode = createServerFn({ method: "POST" })
+  .inputValidator((d: { authUrl: string; cookie: string; code: string }) => {
+    const authUrl = String(d?.authUrl ?? "");
+    if (!/^https:\/\/www\.expireddomains\.net\/emailauth\/[A-Za-z0-9]+\/?$/.test(authUrl)) throw new Error("bad url");
+    return { authUrl, cookie: String(d?.cookie ?? "").slice(0, 8000), code: String(d?.code ?? "").trim().slice(0, 50) };
+  })
+  .handler(async ({ data }) => {
+    const jar = jarOf(data.cookie);
+    const r = await fetch(data.authUrl, {
+      method: "POST", redirect: "manual",
+      headers: { "user-agent": UA, "content-type": "application/x-www-form-urlencoded", cookie: ser(jar), referer: data.authUrl },
+      body: new URLSearchParams({ secret_code: data.code, rememberme: "1" }),
+    });
+    const res = await finish(jar, r);
+    return { ok: res.ok, cookie: res.cookie };
   });
