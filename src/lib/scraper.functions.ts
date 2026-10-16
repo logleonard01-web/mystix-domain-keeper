@@ -161,7 +161,13 @@ const ser = (jar: Map<string, string>) => [...jar].map(([k, v]) => `${k}=${v}`).
 async function finish(jar: Map<string, string>, r: Response) {
   eat(jar, r);
   const loc = r.headers.get("location") ?? "";
-  if (/emailauth/.test(loc)) return { ok: false, needsCode: true, authUrl: new URL(loc, "https://www.expireddomains.net").href, cookie: ser(jar) };
+  if (/emailauth/.test(loc)) {
+    const authUrl = new URL(loc, "https://www.expireddomains.net").href;
+    // the site emails the code when this page is opened
+    eat(jar, await fetch(authUrl, { headers: { "user-agent": UA, cookie: ser(jar) } }));
+    return { ok: false, needsCode: true, authUrl, cookie: ser(jar) };
+  }
+  if (false) return { ok: false, needsCode: true, authUrl: new URL(loc, "https://www.expireddomains.net").href, cookie: ser(jar) };
   const check = await fetch("https://www.expireddomains.net/", { headers: { "user-agent": UA, cookie: ser(jar) } });
   eat(jar, check);
   const ok = /logout/i.test(await check.text());
