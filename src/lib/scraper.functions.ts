@@ -102,26 +102,53 @@ export const listFilters = createServerFn({ method: "GET" }).handler(async () =>
   return (await r.json()) as { filters: { id: string; name: string; kind: string }[] };
 });
 
+async function isAvailable(domain: string): Promise<boolean> {
+  const tld = domain.split(".").pop();
+  const url = tld === "org"
+    ? `https://rdap.publicinterestregistry.org/rdap/domain/${domain}`
+    : `https://rdap.verisign.com/${tld}/v1/domain/${domain}`;
+  try {
+    const r = await fetch(url, { headers: { accept: "application/rdap+json" } });
+    return r.status !== 200; // 404 = unregistered; on errors keep it (it is on a deleted list)
+  } catch {
+    return true;
+  }
+}
+
 const ED_TLDS = ["com", "net", "org"] as const;
 
+const ORDERS = ["domain", "abirth", "bl", "aentries", "whois", "changes", "domainpop", "statusnet", "statusorg", "statuscom", "statustld_registered", "related_cnobi", "dmoz"];
+
 export const scrapeExpiredPage = createServerFn({ method: "POST" })
-  .inputValidator((d: { tld: string; start: number }) => {
-    const tld = ED_TLDS.includes(d?.tld as any) ? d.tld : "com";
-    const start = Math.max(0, Math.min(1_000_000, Math.floor(Number(d?.start) || 0)));
-    return { tld, start: start - (start % 25) };
+  .inputValidator((d: { list: string; order: string; dir: string; start: number; tlds: string[] }) => {
+    const list = d?.list === "com" ? "com" : "all";
+    const order = ORDERS.includes(d?.order) ? d.order : "";
+    const dir = d?.dir === "d" ? "d" : "a";
+    const start = Math.max(0, Math.min(100000, Math.floor(Number(d?.start) || 0)));
+    const tlds = (d?.tlds ?? []).filter((t) => ED_TLDS.includes(t as any));
+    return { list, order, dir, start: start - (start % 25), tlds };
   })
   .handler(async ({ data }) => {
-    const r = await fetch(`https://www.expireddomains.net/deleted-${data.tld}-domains/?start=${data.start}`, {
-      headers: { "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36" },
+    const path = data.list === "com" ? "deleted-com-domains" : "deleted-domains";
+    const qs = new URLSearchParams({ start: String(data.start) });
+    if (data.order) { qs.set("o", data.order); qs.set("r", data.dir); }
+    const r = await fetch(`https://www.expireddomains.net/${path}/?${qs}`, {
+      headers: {
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36",
+        ...(process.env["EXPIREDDOMAINS_COOKIE"] ? { cookie: process.env["EXPIREDDOMAINS_COOKIE"] } : {}),
+      },
     });
-    if (!r.ok) return { domains: [] as string[], status: r.status };
+    if (!r.ok) return { domains: [] as string[], found: 0, status: r.status, walled: false, loggedIn: false };
     const html = await r.text();
+    const loggedIn = /logout/i.test(html);
+    const all = new Set<string>();
     const set = new Set<string>();
     for (const m of html.matchAll(/class="namelinks"[^>]*>([^<]+)</g)) {
       const d = (m[1] ?? "").trim().toLowerCase();
-      if (d.endsWith(`.${data.tld}`) && DOMAIN_RE.test(d)) set.add(d);
+      all.add(d);
+      if (data.tlds.some((t) => d.endsWith(`.${t}`)) && DOMAIN_RE.test(d)) set.add(d);
     }
-    // keep only ones RDAP confirms are unregistered (buyable)
-    const infos = await pool([...set], 6, rdap);
-    return { domains: infos.filter((i) => !i.registered).map((i) => i.domain), found: set.size, status: 200 };
+    const avail = await pool([...set], 6, isAvailable);
+    const walled = all.size === 0 && /Login to see all Domains/i.test(html);
+    return { domains: [...set].filter((_, i) => avail[i]), found: all.size, status: 200, walled, loggedIn };
   });
