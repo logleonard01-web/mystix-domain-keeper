@@ -65,6 +65,7 @@ function Index() {
       if (!job) { setStatus("Finished every page"); break; }
       const key = `${job.list}|${job.order}|${job.dir}`;
       if (empty.has(key) && job.start > 0) continue;
+      await sleep(1500);
       setStatus(`Scraping ${job.list === "com" ? ".com" : ".net/.org"} list${job.order ? ` (${job.order})` : ""} page ${job.start / 25 + 1}… · ${jobs.length} left`);
       const tld = job.list === "com" ? "com" : tlds.filter((t) => t !== "com").join("/");
 
