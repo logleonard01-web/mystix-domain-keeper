@@ -120,7 +120,7 @@ const ED_TLDS = ["com", "net", "org"] as const;
 const ORDERS = ["domain", "abirth", "bl", "aentries", "whois", "changes", "domainpop", "statusnet", "statusorg", "statuscom", "statustld_registered", "related_cnobi", "dmoz"];
 
 export const scrapeExpiredPage = createServerFn({ method: "POST" })
-  .inputValidator((d: { list: string; order: string; dir: string; start: number; tlds: string[] }) => {
+  .inputValidator((d: { list: string; order: string; dir: string; start: number; tlds: string[]; cookie?: string }) => {
     const list = d?.list === "com" ? "com" : "all";
     const order = ORDERS.includes(d?.order) ? d.order : "";
     const dir = d?.dir === "d" ? "d" : "a";
