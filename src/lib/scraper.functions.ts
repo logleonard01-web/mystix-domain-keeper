@@ -141,22 +141,6 @@ async function isAvailable(domain: string): Promise<boolean> {
 
 const ORDERS = ["domain", "abirth", "bl", "aentries", "whois", "changes", "domainpop", "statusnet", "statusorg", "statuscom", "statustld_registered", "related_cnobi", "dmoz"];
 
-// TLD filter ids from the site's filter panel (only rendered for logged-in users)
-let tldIds: Record<string, string> | null = null;
-async function tldId(tld: string, cookie: string): Promise<string | null> {
-  if (!tldIds) {
-    tldIds = {};
-    try {
-      const r = await fetch("https://www.expireddomains.net/deleted-domains/", { headers: { "user-agent": UA, cookie } });
-      const html = await r.text();
-      for (const m of html.matchAll(/value="(\d+)"[^>]*>\s*(?:<[^>]+>\s*)*\.([a-z]{2,24})\b/gi)) {
-        if (m[1] && m[2]) tldIds[m[2].toLowerCase()] = m[1];
-      }
-    } catch { /* keep empty */ }
-  }
-  return tldIds[tld] ?? null;
-}
-
 export const scrapeExpiredPage = createServerFn({ method: "POST" })
   .inputValidator((d: { list: string; order: string; dir: string; start: number; tlds: string[]; cookie?: string; ftld?: string }) => {
     const list = d?.list === "com" ? "com" : "all";

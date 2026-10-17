@@ -193,11 +193,11 @@ function Index() {
           {TLDS.map((t) => {
             const on = tlds.includes(t);
             return (
-              <button key={t} disabled={running}
+              <Button variant="ghost" key={t} disabled={running}
                 onClick={() => setTlds((x) => (on ? x.filter((y) => y !== t) : [...x, t]))}
                 className={`rounded-full border px-3 py-1 font-mono text-sm ${on ? "border-primary bg-primary/15 text-primary" : "text-muted-foreground"}`}>
                 .{t}
-              </button>
+              </Button>
             );
           })}
         </div>
@@ -208,10 +208,10 @@ function Index() {
             const on = picked.includes(f.id);
             const locked = running || (!on && picked.length >= MAX);
             return (
-              <button key={f.id} onClick={() => toggle(f.id)} disabled={locked && !on}
+              <Button variant="ghost" key={f.id} onClick={() => toggle(f.id)} disabled={locked && !on}
                 className={`rounded-full border px-3 py-1 text-sm transition ${on ? "border-primary bg-primary/15 text-primary" : "text-muted-foreground hover:border-accent"} ${locked && !on ? "opacity-30" : ""}`}>
                 {f.name}
-              </button>
+              </Button>
             );
           })}
           {!filters.length && <span className="text-sm text-muted-foreground">Loading filters…</span>}
@@ -224,10 +224,10 @@ function Index() {
               {Array.from({ length: picked.length }, (_, i) => i + 1).map((n) => {
                 const on = needN === n;
                 return (
-                  <button key={n} onClick={() => setNeed(n === picked.length ? 0 : n)}
+                  <Button variant="ghost" key={n} onClick={() => setNeed(n === picked.length ? 0 : n)}
                     className={`rounded-full border px-3 py-1 text-sm ${on ? "border-primary bg-primary/15 text-primary" : "text-muted-foreground"}`}>
                     {n === picked.length ? `All ${n}` : `${n} of ${picked.length}`}
-                  </button>
+                  </Button>
                 );
               })}
             </div>
@@ -237,8 +237,8 @@ function Index() {
         <div className="mt-4 rounded-lg border p-3 text-sm">
           <div className="flex items-center justify-between">
             <span className="font-mono text-xs text-muted-foreground">EXPIREDDOMAINS ACCOUNT</span>
-            {cookie ? <button onClick={() => saveCookie("")} className="text-xs text-destructive">Sign out</button>
-              : <button onClick={() => setAcct((a) => ({ ...a, open: !a.open }))} className="text-xs text-primary">{acct.open ? "Close" : "+ Add account"}</button>}
+            {cookie ? <Button variant="ghost" onClick={() => saveCookie("")} className="text-xs text-destructive">Sign out</Button>
+              : <Button variant="ghost" onClick={() => setAcct((a) => ({ ...a, open: !a.open }))} className="text-xs text-primary">{acct.open ? "Close" : "+ Add account"}</Button>}
           </div>
           {cookie && <p className="mt-1 text-xs text-success">Account session saved — verified on every page</p>}
           {!cookie && <p className="mt-1 text-xs text-muted-foreground">Account required · no guest scraping</p>}
@@ -248,19 +248,19 @@ function Index() {
               <input type="password" value={acct.password} onChange={(e) => setAcct((a) => ({ ...a, password: e.target.value }))} placeholder="Password" className="w-full rounded-md border bg-background px-2 py-1.5" />
               {acct.authUrl && (<div className="flex gap-2">
                 <input value={acct.code} onChange={(e) => setAcct((a) => ({ ...a, code: e.target.value }))} placeholder="Email code" className="flex-1 rounded-md border bg-background px-2 py-1.5" />
-                <button onClick={doVerify} disabled={!acct.code} className="rounded-md bg-primary px-3 text-primary-foreground disabled:opacity-40">Verify</button>
+                <Button variant="ghost" onClick={doVerify} disabled={!acct.code} className="rounded-md bg-primary px-3 text-primary-foreground disabled:opacity-40">Verify</Button>
               </div>)}
-              <button onClick={doLogin} disabled={!acct.login || !acct.password} className="w-full rounded-md bg-primary py-1.5 text-primary-foreground disabled:opacity-40">Sign in</button>
+              <Button variant="ghost" onClick={doLogin} disabled={!acct.login || !acct.password} className="w-full rounded-md bg-primary py-1.5 text-primary-foreground disabled:opacity-40">Sign in</Button>
               <textarea onBlur={(e) => e.target.value.trim() && saveCookie(e.target.value.trim())} placeholder="…or paste your expireddomains.net cookie" rows={2} className="w-full rounded-md border bg-background px-2 py-1.5 font-mono text-xs" />
             </div>
           )}
           {acct.msg && <p className="mt-1 text-xs text-muted-foreground">{acct.msg}</p>}
         </div>
 
-        <button onClick={running ? stop : start} disabled={!running && (!picked.length || !tlds.length || !cookie)}
+        <Button variant="ghost" onClick={running ? stop : start} disabled={!running && (!picked.length || !tlds.length || !cookie)}
           className={`mt-5 w-full rounded-lg px-6 py-3 font-semibold transition hover:opacity-90 disabled:opacity-40 ${running ? "bg-destructive text-destructive-foreground" : "bg-primary text-primary-foreground"}`}>
           {running ? "■ Stop" : "▶ Start"}
-        </button>
+        </Button>
 
         <div className="mt-4 flex h-1.5 overflow-hidden rounded-full bg-muted">
           <i className="block h-full bg-success transition-all duration-700" style={{ width: `${pct}%` }} />
@@ -281,8 +281,8 @@ function Index() {
       {rows.length > 0 && (
         <section className="mt-6">
           <div className="mb-2 flex justify-end gap-2">
-            <button onClick={() => setOnlyClean((v) => !v)} className="rounded-md border px-3 py-1 text-sm">{onlyClean ? "Show all" : "Only ✅"}</button>
-            <button onClick={() => navigator.clipboard.writeText(rows.filter(isClean).map((r) => r.domain).join("\n"))} className="rounded-md border px-3 py-1 text-sm">Copy ✅</button>
+            <Button variant="ghost" onClick={() => setOnlyClean((v) => !v)} className="rounded-md border px-3 py-1 text-sm">{onlyClean ? "Show all" : "Only ✅"}</Button>
+            <Button variant="ghost" onClick={() => navigator.clipboard.writeText(rows.filter(isClean).map((r) => r.domain).join("\n"))} className="rounded-md border px-3 py-1 text-sm">Copy ✅</Button>
           </div>
           <ul className="space-y-1.5">
             {shown.map((r) => {
