@@ -1,4 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
+import { ED_TLDS, expiredNextStart, hasExpiredAccount, requireExpiredCookie } from "./expired";
+import { PUBLIC_FILTERS, repositoryCheck, resolveFilterChecks, type FilterResult } from "./filter-checker";
 
 const API = "https://lllogan.com/api/public/v1";
 const DOMAIN_RE = /^(?=.{3,253}$)([a-z0-9-]{1,63}\.)+[a-z]{2,24}$/;
@@ -76,7 +78,7 @@ export const scrapeDomains = createServerFn({ method: "POST" })
     return { domains: infos.filter((i) => i.registered) };
   });
 
-export type FilterResult = { site: string; filter: string; status: string; category: string | null };
+export type { FilterResult } from "./filter-checker";
 
 export const checkFilters = createServerFn({ method: "POST" })
   .inputValidator((d: { links: string[]; filters: string[] }) => {
@@ -86,26 +88,37 @@ export const checkFilters = createServerFn({ method: "POST" })
     return { links, filters };
   })
   .handler(async ({ data }) => {
+    const key = process.env["LLLOGAN_API_KEY"];
+    const results = await resolveFilterChecks(data.links, data.filters, repositoryCheck, async (links, filters) => {
+    if (!key) return [];
     const r = await fetch(`${API}/bulk`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${process.env["LLLOGAN_API_KEY"]}`, "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-      signal: AbortSignal.timeout(45_000),
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ links, filters }),
+      signal: AbortSignal.timeout(15_000),
     });
     if (!r.ok) throw new Error(`Checker error (${r.status})`);
     const j: any = await r.json();
-    return { results: (j.results ?? []) as FilterResult[] };
+    return (j.results ?? []) as FilterResult[];
+    });
+    return { results };
   });
 
 export const listFilters = createServerFn({ method: "GET" }).handler(async () => {
-  const r = await fetch(`${API}/filters`, { headers: { Authorization: `Bearer ${process.env["LLLOGAN_API_KEY"]}` } });
-  if (!r.ok) return { filters: [] as { id: string; name: string; kind: string }[] };
-  return (await r.json()) as { filters: { id: string; name: string; kind: string }[] };
+  const filters = [...PUBLIC_FILTERS, ...["securly", "goguardianv3", "lightspeed"].map((id) => ({ id, name: id === "goguardianv3" ? "GoGuardian v3" : id === "securly" ? "Securly" : "Lightspeed", kind: "LLLogan" }))];
+  try {
+    const r = await fetch(`${API}/filters`, { headers: { Authorization: `Bearer ${process.env["LLLOGAN_API_KEY"]}` }, signal: AbortSignal.timeout(8000) });
+    if (r.ok) {
+      const data = await r.json() as { filters: { id: string; name: string; kind: string }[] };
+      for (const f of data.filters ?? []) if (!filters.some((existing) => existing.id === f.id)) filters.push(f);
+    }
+  } catch { /* keep selectable defaults */ }
+  return { filters };
 });
 
 let boot: Promise<Record<string, string>> | null = null;
 function rdapBase(tld: string) {
-  boot ??= fetch("https://data.iana.org/rdap/dns.json").then((r) => r.json()).then((j: any) => {
+  boot ??= fetch("https://data.iana.org/rdap/dns.json", { signal: AbortSignal.timeout(8000) }).then((r) => r.json()).then((j: any) => {
     const m: Record<string, string> = {};
     for (const [tl, urls] of j.services ?? []) for (const t of tl) m[t] = urls[0];
     return m;
@@ -119,14 +132,12 @@ async function isAvailable(domain: string): Promise<boolean> {
   if (!base) base = "https://rdap.org/";
   if (!base.endsWith("/")) base += "/";
   try {
-    const r = await fetch(`${base}domain/${domain}`, { headers: { accept: "application/rdap+json" } });
-    return r.status !== 200; // 404 = unregistered; on errors keep it (it is on a deleted list)
+    const r = await fetch(`${base}domain/${domain}`, { headers: { accept: "application/rdap+json" }, signal: AbortSignal.timeout(6000) });
+    return r.status === 404;
   } catch {
-    return true;
+    return false;
   }
 }
-
-const ED_TLDS = ["com", "net", "org", "xyz", "online", "site", "store", "shop", "top", "fun", "space", "club", "info", "biz", "icu", "lol", "website", "tech", "pw", "cc", "us", "io", "co", "me"] as const;
 
 const ORDERS = ["domain", "abirth", "bl", "aentries", "whois", "changes", "domainpop", "statusnet", "statusorg", "statuscom", "statustld_registered", "related_cnobi", "dmoz"];
 
@@ -151,31 +162,29 @@ export const scrapeExpiredPage = createServerFn({ method: "POST" })
     const list = d?.list === "com" ? "com" : "all";
     const order = ORDERS.includes(d?.order) ? d.order : "";
     const dir = d?.dir === "d" ? "d" : "a";
-    const start = Math.max(0, Math.min(100000, Math.floor(Number(d?.start) || 0)));
+    const start = Math.max(0, Math.floor(Number(d?.start) || 0));
+    if (!Number.isSafeInteger(start)) throw new Error("Invalid page offset");
     const tlds = (d?.tlds ?? []).filter((t) => ED_TLDS.includes(t as any));
     const cookie = typeof d?.cookie === "string" ? d.cookie.slice(0, 8000) : "";
     const ftld = ED_TLDS.includes(d?.ftld as any) ? d.ftld : "";
     return { list, order, dir, start: start - (start % 25), tlds, cookie, ftld };
   })
   .handler(async ({ data }) => {
-    const path = data.list === "com" ? "deleted-com-domains" : "deleted-domains";
+    const cookie = requireExpiredCookie(data.cookie || "");
+    const path = data.ftld ? `deleted-${data.ftld}-domains` : data.list === "com" ? "deleted-com-domains" : "deleted-domains";
     const qs = new URLSearchParams({ start: String(data.start) });
     if (data.order) { qs.set("o", data.order); qs.set("r", data.dir); }
-    const cookie = data.cookie || process.env["EXPIREDDOMAINS_COOKIE"] || "";
-    // logged-in users get a server-side TLD filter: every row on the page is that TLD
-    if (data.ftld && cookie) {
-      const id = await tldId(data.ftld, cookie);
-      if (id) qs.set("ftlds[]", id);
-    }
     const r = await fetch(`https://www.expireddomains.net/${path}/?${qs}`, {
+      signal: AbortSignal.timeout(12000),
       headers: {
         "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36",
         ...(cookie ? { cookie } : {}),
       },
     });
-    if (!r.ok) return { domains: [] as string[], found: 0, status: r.status, walled: false, loggedIn: false };
+    if (!r.ok) return { domains: [] as string[], found: 0, status: r.status, walled: false, loggedIn: false, nextStart: null as number | null };
     const html = await r.text();
-    const loggedIn = /logout/i.test(html);
+    const loggedIn = hasExpiredAccount(html);
+    if (!loggedIn) return { domains: [] as string[], found: 0, status: 200, walled: true, loggedIn: false, nextStart: null as number | null };
     const all = new Set<string>();
     const set = new Set<string>();
     for (const m of html.matchAll(/class="namelinks"[^>]*>([^<]+)</g)) {
@@ -185,7 +194,7 @@ export const scrapeExpiredPage = createServerFn({ method: "POST" })
     }
     const avail = await pool([...set], 6, isAvailable);
     const walled = all.size === 0 && /Login to see all Domains/i.test(html);
-    return { domains: [...set].filter((_, i) => avail[i]), found: all.size, status: 200, walled, loggedIn };
+    return { domains: [...set].filter((_, i) => avail[i]), found: all.size, status: 200, walled, loggedIn, nextStart: expiredNextStart(html, data.start) };
   });
 
 const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/124 Safari/537.36";
@@ -209,7 +218,7 @@ async function finish(jar: Map<string, string>, r0: Response) {
   }
   const check = await fetch("https://www.expireddomains.net/", { headers: { "user-agent": UA, cookie: ser(jar) } });
   eat(jar, check);
-  const ok = /logout/i.test(await check.text());
+  const ok = hasExpiredAccount(await check.text());
   const body = r === r0 && r.status === 200 ? await r.text() : "";
   const reason = ok ? "" : /not correct/i.test(body) ? "That code isn't correct" : /wrong|invalid|incorrect/i.test(body) ? "Wrong username or password" : `Sign-in not accepted (status ${r0.status})`;
   console.log("[expireddomains login]", { status: r0.status, ok, reason, cookies: [...jar.keys()] });
