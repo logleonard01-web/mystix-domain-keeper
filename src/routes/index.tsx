@@ -184,6 +184,7 @@ function Index() {
       )}
       <header className="mb-6">
         <h1 className="text-2xl font-bold"><span className="text-gradient">MystixScraperChecker</span></h1>
+        <p className="mt-1 font-mono text-xs uppercase text-muted-foreground">Experimental</p>
         <p className="mt-1 text-sm text-muted-foreground">Scrapes every buyable domain (.com, .net, .org and cheap TLDs like .xyz, .site, .top) from expireddomains.net and checks your filters.</p>
       </header>
 
@@ -236,7 +237,7 @@ function Index() {
 
         <div className="mt-4 rounded-lg border p-3 text-sm">
           <div className="flex items-center justify-between">
-            <span className="font-mono text-xs text-muted-foreground">EXPIREDDOMAINS ACCOUNT</span>
+            <span className="font-mono text-xs text-muted-foreground">EXPIREDDOMAINS ACCOUNT · EXPERIMENTAL</span>
             {cookie ? <Button variant="ghost" onClick={() => saveCookie("")} className="text-xs text-destructive">Sign out</Button>
               : <Button variant="ghost" onClick={() => setAcct((a) => ({ ...a, open: !a.open }))} className="text-xs text-primary">{acct.open ? "Close" : "+ Add account"}</Button>}
           </div>
