@@ -30,7 +30,7 @@ export async function repositoryCheck(site: string, filter: string): Promise<Fil
       category = `${entry.cat}: ${entry.name}`; blocked = entry.blocked;
     } else if (filter === "senso") {
       if (!Array.isArray(data) || !data.length) return null;
-      const entries = data.map((id) => (senso as Record<string, [string, boolean]>)[String(id)]);
+      const entries = data.map((id) => (senso as Record<string, (string | boolean)[]>)[String(id)]);
       if (entries.some((entry) => !entry)) return null;
       category = entries.map((entry) => entry?.[0]).join(", ");
       blocked = entries.some((entry) => entry?.[1] === true);
