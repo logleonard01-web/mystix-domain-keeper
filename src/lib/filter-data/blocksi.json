@@ -1,0 +1,554 @@
+{
+  "1": {
+    "name": "All",
+    "cat": "Security Risk",
+    "num": 1,
+    "blocked": true
+  },
+  "2": {
+    "name": "All",
+    "cat": "Unethical",
+    "num": 2,
+    "blocked": true
+  },
+  "3": {
+    "name": "All",
+    "cat": "Adult/Mature Content",
+    "num": 3,
+    "blocked": true
+  },
+  "4": {
+    "name": "All",
+    "cat": "Bandwidth Consuming",
+    "num": 4,
+    "blocked": true
+  },
+  "5": {
+    "name": "All",
+    "cat": "Business",
+    "num": 5,
+    "blocked": false
+  },
+  "6": {
+    "name": "All",
+    "cat": "Personal",
+    "num": 6,
+    "blocked": true
+  },
+  "100": {
+    "name": "Malicious Websites",
+    "cat": "Security Risk",
+    "num": 100,
+    "blocked": true
+  },
+  "101": {
+    "name": "Phishing",
+    "cat": "Security Risk",
+    "num": 101,
+    "blocked": true
+  },
+  "102": {
+    "name": "Spam URLs",
+    "cat": "Security Risk",
+    "num": 102,
+    "blocked": true
+  },
+  "103": {
+    "name": "Newly Registered Domain",
+    "cat": "Security Risk",
+    "num": 103,
+    "blocked": true
+  },
+  "104": {
+    "name": "Newly Observed Domain",
+    "cat": "Security Risk",
+    "num": 104,
+    "blocked": true
+  },
+  "105": {
+    "name": "Dynamic DNS",
+    "cat": "Security Risk",
+    "num": 105,
+    "blocked": true
+  },
+  "200": {
+    "name": "Drug Abuse",
+    "cat": "Unethical",
+    "num": 200,
+    "blocked": true
+  },
+  "201": {
+    "name": "Hacking",
+    "cat": "Unethical",
+    "num": 201,
+    "blocked": true
+  },
+  "202": {
+    "name": "Illegal or Unethical",
+    "cat": "Unethical",
+    "num": 202,
+    "blocked": true
+  },
+  "203": {
+    "name": "Discrimination",
+    "cat": "Unethical",
+    "num": 203,
+    "blocked": true
+  },
+  "204": {
+    "name": "Explicit Violence",
+    "cat": "Unethical",
+    "num": 204,
+    "blocked": true
+  },
+  "205": {
+    "name": "Extremist Groups",
+    "cat": "Unethical",
+    "num": 205,
+    "blocked": true
+  },
+  "206": {
+    "name": "Proxy Avoidance",
+    "cat": "Unethical",
+    "num": 206,
+    "blocked": true
+  },
+  "207": {
+    "name": "Plagiarism",
+    "cat": "Unethical",
+    "num": 207,
+    "blocked": true
+  },
+  "208": {
+    "name": "Child Abuse",
+    "cat": "Unethical",
+    "num": 208,
+    "blocked": true
+  },
+  "300": {
+    "name": "Alternative Beliefs",
+    "cat": "Adult/Mature Content",
+    "num": 300,
+    "blocked": true
+  },
+  "301": {
+    "name": "Abortion",
+    "cat": "Adult/Mature Content",
+    "num": 301,
+    "blocked": true
+  },
+  "302": {
+    "name": "Adult",
+    "cat": "Adult/Mature Content",
+    "num": 302,
+    "blocked": true
+  },
+  "303": {
+    "name": "Advocacy Organizations",
+    "cat": "Adult/Mature Content",
+    "num": 303,
+    "blocked": true
+  },
+  "304": {
+    "name": "Gambling",
+    "cat": "Adult/Mature Content",
+    "num": 304,
+    "blocked": true
+  },
+  "305": {
+    "name": "Nudity and Risque",
+    "cat": "Adult/Mature Content",
+    "num": 305,
+    "blocked": true
+  },
+  "306": {
+    "name": "Pornography",
+    "cat": "Adult/Mature Content",
+    "num": 306,
+    "blocked": true
+  },
+  "307": {
+    "name": "Dating",
+    "cat": "Adult/Mature Content",
+    "num": 307,
+    "blocked": true
+  },
+  "308": {
+    "name": "Weapons (sales)",
+    "cat": "Adult/Mature Content",
+    "num": 308,
+    "blocked": true
+  },
+  "309": {
+    "name": "Marijuana",
+    "cat": "Adult/Mature Content",
+    "num": 309,
+    "blocked": true
+  },
+  "310": {
+    "name": "Sex Education",
+    "cat": "Adult/Mature Content",
+    "num": 310,
+    "blocked": true
+  },
+  "311": {
+    "name": "Alcohol",
+    "cat": "Adult/Mature Content",
+    "num": 311,
+    "blocked": true
+  },
+  "312": {
+    "name": "Tobacco",
+    "cat": "Adult/Mature Content",
+    "num": 312,
+    "blocked": true
+  },
+  "313": {
+    "name": "Lingerie and Swimsuit",
+    "cat": "Adult/Mature Content",
+    "num": 313,
+    "blocked": true
+  },
+  "314": {
+    "name": "Sports Hunting and War Games",
+    "cat": "Adult/Mature Content",
+    "num": 314,
+    "blocked": true
+  },
+  "400": {
+    "name": "Freeware and Software Downloads",
+    "cat": "Bandwidth Consuming",
+    "num": 400,
+    "blocked": true
+  },
+  "401": {
+    "name": "File Sharing and Storage",
+    "cat": "Bandwidth Consuming",
+    "num": 401,
+    "blocked": false
+  },
+  "402": {
+    "name": "Streaming Media and Download",
+    "cat": "Bandwidth Consuming",
+    "num": 402,
+    "blocked": true
+  },
+  "403": {
+    "name": "Peer-to-peer File Sharing",
+    "cat": "Bandwidth Consuming",
+    "num": 403,
+    "blocked": true
+  },
+  "404": {
+    "name": "Internet Radio and TV",
+    "cat": "Bandwidth Consuming",
+    "num": 404,
+    "blocked": true
+  },
+  "405": {
+    "name": "Internet Telephony",
+    "cat": "Bandwidth Consuming",
+    "num": 405,
+    "blocked": true
+  },
+  "500": {
+    "name": "Finance and Banking",
+    "cat": "Business",
+    "num": 500,
+    "blocked": false
+  },
+  "501": {
+    "name": "Search Engines and Portals",
+    "cat": "Business",
+    "num": 501,
+    "blocked": false
+  },
+  "502": {
+    "name": "General Organizations",
+    "cat": "Business",
+    "num": 502,
+    "blocked": false
+  },
+  "503": {
+    "name": "business",
+    "cat": "Business",
+    "num": 503,
+    "blocked": false
+  },
+  "504": {
+    "name": "Information and Computer Security",
+    "cat": "Business",
+    "num": 504,
+    "blocked": false
+  },
+  "505": {
+    "name": "Government and Legal Organizations",
+    "cat": "Business",
+    "num": 505,
+    "blocked": false
+  },
+  "506": {
+    "name": "Information Technology",
+    "cat": "Business",
+    "num": 506,
+    "blocked": false
+  },
+  "507": {
+    "name": "Armed Forces",
+    "cat": "Business",
+    "num": 507,
+    "blocked": false
+  },
+  "508": {
+    "name": "Web Hosting",
+    "cat": "Business",
+    "num": 508,
+    "blocked": false
+  },
+  "509": {
+    "name": "Secure Websites",
+    "cat": "Business",
+    "num": 509,
+    "blocked": false
+  },
+  "510": {
+    "name": "Web-based Applications",
+    "cat": "Business",
+    "num": 510,
+    "blocked": false
+  },
+  "511": {
+    "name": "Online meeting",
+    "cat": "Business",
+    "num": 511,
+    "blocked": false
+  },
+  "512": {
+    "name": "Remote Access",
+    "cat": "Business",
+    "num": 512,
+    "blocked": false
+  },
+  "513": {
+    "name": "Web Analytics",
+    "cat": "Business",
+    "num": 513,
+    "blocked": false
+  },
+  "514": {
+    "name": "Charitable Organizations",
+    "cat": "Business",
+    "num": 514,
+    "blocked": false
+  },
+  "600": {
+    "name": "Advertising",
+    "cat": "Personal",
+    "num": 600,
+    "blocked": true
+  },
+  "601": {
+    "name": "Brokerage and Trading",
+    "cat": "Personal",
+    "num": 601,
+    "blocked": false
+  },
+  "602": {
+    "name": "Games",
+    "cat": "Personal",
+    "num": 602,
+    "blocked": true
+  },
+  "603": {
+    "name": "Web-based Email",
+    "cat": "Personal",
+    "num": 603,
+    "blocked": false
+  },
+  "604": {
+    "name": "Entertainment",
+    "cat": "Personal",
+    "num": 604,
+    "blocked": true
+  },
+  "605": {
+    "name": "Arts and Culture",
+    "cat": "Personal",
+    "num": 605,
+    "blocked": false
+  },
+  "606": {
+    "name": "Education",
+    "cat": "Personal",
+    "num": 606,
+    "blocked": false
+  },
+  "607": {
+    "name": "Health and Wellness",
+    "cat": "Personal",
+    "num": 607,
+    "blocked": false
+  },
+  "608": {
+    "name": "Job Search",
+    "cat": "Personal",
+    "num": 608,
+    "blocked": false
+  },
+  "609": {
+    "name": "Medicine",
+    "cat": "Personal",
+    "num": 609,
+    "blocked": false
+  },
+  "610": {
+    "name": "News and Media",
+    "cat": "Personal",
+    "num": 610,
+    "blocked": false
+  },
+  "611": {
+    "name": "Social Networking",
+    "cat": "Personal",
+    "num": 611,
+    "blocked": true
+  },
+  "612": {
+    "name": "Political Organizations",
+    "cat": "Personal",
+    "num": 612,
+    "blocked": true
+  },
+  "613": {
+    "name": "Reference",
+    "cat": "Personal",
+    "num": 613,
+    "blocked": false
+  },
+  "614": {
+    "name": "Global Religion",
+    "cat": "Personal",
+    "num": 614,
+    "blocked": false
+  },
+  "615": {
+    "name": "Shopping and Auction",
+    "cat": "Personal",
+    "num": 615,
+    "blocked": true
+  },
+  "616": {
+    "name": "Society and Lifestyles",
+    "cat": "Personal",
+    "num": 616,
+    "blocked": false
+  },
+  "617": {
+    "name": "Sports",
+    "cat": "Personal",
+    "num": 617,
+    "blocked": false
+  },
+  "618": {
+    "name": "Travel",
+    "cat": "Personal",
+    "num": 618,
+    "blocked": false
+  },
+  "619": {
+    "name": "Personal Vehicles",
+    "cat": "Personal",
+    "num": 619,
+    "blocked": false
+  },
+  "620": {
+    "name": "Dynamic Content",
+    "cat": "Personal",
+    "num": 620,
+    "blocked": true
+  },
+  "621": {
+    "name": "Meaningless Content",
+    "cat": "Personal",
+    "num": 621,
+    "blocked": true
+  },
+  "622": {
+    "name": "Folklore",
+    "cat": "Personal",
+    "num": 622,
+    "blocked": false
+  },
+  "623": {
+    "name": "Web Chat",
+    "cat": "Personal",
+    "num": 623,
+    "blocked": true
+  },
+  "624": {
+    "name": "Instant Messaging",
+    "cat": "Personal",
+    "num": 624,
+    "blocked": true
+  },
+  "625": {
+    "name": "Newsgroups and Message Boards",
+    "cat": "Personal",
+    "num": 625,
+    "blocked": true
+  },
+  "626": {
+    "name": "Digital Postcards",
+    "cat": "Personal",
+    "num": 626,
+    "blocked": true
+  },
+  "627": {
+    "name": "Child Education",
+    "cat": "Personal",
+    "num": 627,
+    "blocked": false
+  },
+  "628": {
+    "name": "Real Estate",
+    "cat": "Personal",
+    "num": 628,
+    "blocked": false
+  },
+  "629": {
+    "name": "Restaurant and Dining",
+    "cat": "Personal",
+    "num": 629,
+    "blocked": false
+  },
+  "630": {
+    "name": "Personal Websites and Blogs",
+    "cat": "Personal",
+    "num": 630,
+    "blocked": false
+  },
+  "631": {
+    "name": "Content Servers",
+    "cat": "Personal",
+    "num": 631,
+    "blocked": false
+  },
+  "632": {
+    "name": "Domain Parking",
+    "cat": "Personal",
+    "num": 632,
+    "blocked": true
+  },
+  "633": {
+    "name": "Personal Privacy",
+    "cat": "Personal",
+    "num": 633,
+    "blocked": false
+  },
+  "700": {
+    "name": "Unrated",
+    "cat": "Unrated",
+    "num": 700,
+    "blocked": true
+  }
+}
